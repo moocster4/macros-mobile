@@ -1,14 +1,20 @@
 {
   "expo": {
-    "name": "fap-mobile",
+    "name": "Macros",
     "slug": "fap-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "fapmobile",
+    "scheme": "macros",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.macros.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Macros uses your camera to estimate calories and macros from photos of your food, and to scan restaurant menus.",
+        "NSPhotoLibraryUsageDescription": "Macros needs access to your photos so you can log food from existing pictures.",
+        "NSLocationWhenInUseUsageDescription": "Macros uses your location to find nearby restaurants that fit your macros."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -28,11 +34,13 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#f97316",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
-      ]
+      ],
+      "expo-secure-store",
+      "expo-maps"
     ],
     "experiments": {
       "typedRoutes": true,

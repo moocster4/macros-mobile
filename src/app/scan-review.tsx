@@ -35,6 +35,12 @@ export default function ScanReviewScreen() {
   const [form, setForm] = useState({ name: "", calories: "", proteinG: "", carbsG: "", fatG: "" });
   const [error, setError] = useState<string | null>(null);
 
+  // Safe dismiss: pop back if there's history, otherwise land on Today.
+  function dismiss() {
+    if (router.canGoBack()) router.back();
+    else router.replace("/");
+  }
+
   useEffect(() => {
     analyze(uri);
   }, [uri]);
@@ -99,7 +105,7 @@ export default function ScanReviewScreen() {
           fatG:     Number(form.fatG)     || 0,
         }),
       });
-      router.back();
+      dismiss();
     } catch {
       setError("Couldn't save this meal. Try again.");
       setStatus("reviewing");
@@ -109,7 +115,7 @@ export default function ScanReviewScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()}>
+        <Pressable onPress={dismiss}>
           <Text style={styles.closeLink}>Cancel</Text>
         </Pressable>
         <Text style={styles.headerTitle}>Scan food</Text>

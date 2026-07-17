@@ -9,7 +9,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Redirect, useFocusEffect } from "expo-router";
+import { Redirect, useFocusEffect, useRouter } from "expo-router";
+import { getPlan } from "@/lib/plans";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { toDateStr, todayStr } from "@/lib/date";
@@ -17,8 +18,7 @@ import { RangeKey, daysForRange, aggregateMacrosByRange, aggregateWeightByRange,
 import CombinedRings from "@/components/CombinedRings";
 import DateStrip from "@/components/DateStrip";
 import CalendarPicker from "@/components/CalendarPicker";
-import ManualLogger from "@/components/ManualLogger";
-import FoodSearchLogger from "@/components/FoodSearchLogger";
+import LogFoodMenu from "@/components/LogFoodMenu";
 import DailyTasksChecklist from "@/components/DailyTasksChecklist";
 import WeightLogger from "@/components/WeightLogger";
 import WeeklyChart from "@/components/WeeklyChart";
@@ -29,6 +29,7 @@ import MealEntryModal, { MealLogEntry } from "@/components/MealEntryModal";
 const ORANGE = "#f97316";
 
 interface DietProfile {
+  goalType: string | null;
   targetCalories: number;
   targetProteinG: number;
   targetCarbsG: number;
@@ -58,7 +59,8 @@ function dateLabel(dateStr: string) {
 }
 
 export default function TodayScreen() {
-  const { user, loading: authLoading, logout } = useAuth();
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [targets, setTargets] = useState<DietProfile | null>(null);
   const [history, setHistory] = useState<MealLogEntry[]>([]);
   const [weightLogs, setWeightLogs] = useState<WeightLogEntry[]>([]);
@@ -163,8 +165,10 @@ export default function TodayScreen() {
       >
         <View style={styles.header}>
           <Text style={styles.logo}>Macros</Text>
-          <Pressable onPress={logout}>
-            <Text style={styles.logout}>Sign out</Text>
+          <Pressable style={styles.avatarButton} onPress={() => router.push("/account")}>
+            <Text style={styles.avatarButtonText}>
+              {(user.name?.trim()?.[0] ?? user.email?.[0] ?? "?").toUpperCase()}
+            </Text>
           </Pressable>
         </View>
 
@@ -188,22 +192,31 @@ export default function TodayScreen() {
           <>
             {hasGoals ? (
               <View style={styles.ringsCard}>
+                <View style={styles.ringsHeader}>
+                  <Text style={styles.planPill}>
+                    {getPlan(targets!.goalType)?.emoji ?? "🎯"} {getPlan(targets!.goalType)?.label ?? "Your plan"}
+                  </Text>
+                  <Pressable onPress={() => router.push("/plan")}>
+                    <Text style={styles.editPlanLink}>Edit</Text>
+                  </Pressable>
+                </View>
                 <CombinedRings totals={totalsForSelectedDate} targets={targets!} />
               </View>
             ) : (
-              <View style={styles.noGoalsCard}>
+              <Pressable style={styles.noGoalsCard} onPress={() => router.push("/plan")}>
                 <Text style={{ fontSize: 24, marginBottom: 6 }}>🎯</Text>
-                <Text style={styles.noGoalsTitle}>Set your daily goals on the web app</Text>
-                <Text style={styles.noGoalsSub}>Once set, they&apos;ll show up here automatically</Text>
-              </View>
+                <Text style={styles.noGoalsTitle}>Choose your plan</Text>
+                <Text style={styles.noGoalsSub}>Lose fat, gain muscle, bulk, or maintain — we&apos;ll set your daily calories and macros</Text>
+                <View style={styles.noGoalsButton}>
+                  <Text style={styles.noGoalsButtonText}>Get started</Text>
+                </View>
+              </Pressable>
             )}
 
             {isToday && (
               <>
                 <View style={{ height: 12 }} />
-                <FoodSearchLogger onLogged={load} />
-                <View style={{ height: 8 }} />
-                <ManualLogger onLogged={load} />
+                <LogFoodMenu onLogged={load} />
               </>
             )}
 
@@ -268,17 +281,23 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 16, paddingBottom: 40 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
   logo: { fontSize: 22, fontWeight: "800", color: ORANGE },
-  logout: { fontSize: 13, color: "#9ca3af", fontWeight: "600" },
+  avatarButton: { width: 34, height: 34, borderRadius: 17, backgroundColor: ORANGE, alignItems: "center", justifyContent: "center" },
+  avatarButtonText: { color: "#fff", fontSize: 15, fontWeight: "800" },
   ringsCard: {
     backgroundColor: "#fff", borderRadius: 20, padding: 20, alignItems: "center",
     borderWidth: 1, borderColor: "#f0f0f0",
   },
+  ringsHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%", marginBottom: 12 },
+  planPill: { fontSize: 13, fontWeight: "700", color: "#9a3412", backgroundColor: "#fff7ed", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, overflow: "hidden" },
+  editPlanLink: { fontSize: 13, fontWeight: "700", color: ORANGE },
   noGoalsCard: {
     backgroundColor: "#fff", borderRadius: 20, padding: 20, alignItems: "center",
     borderWidth: 1, borderColor: "#f0f0f0",
   },
-  noGoalsTitle: { fontWeight: "700", fontSize: 14, color: "#1f2937" },
+  noGoalsTitle: { fontWeight: "700", fontSize: 16, color: "#1f2937" },
   noGoalsSub: { fontSize: 12, color: "#9ca3af", marginTop: 4, textAlign: "center" },
+  noGoalsButton: { marginTop: 14, backgroundColor: ORANGE, borderRadius: 12, paddingHorizontal: 22, paddingVertical: 10 },
+  noGoalsButtonText: { color: "#fff", fontWeight: "800", fontSize: 14 },
   chartCard: { backgroundColor: "#fff", borderRadius: 20, padding: 16, borderWidth: 1, borderColor: "#f0f0f0" },
   sectionTitle: { fontSize: 11, fontWeight: "700", color: "#9ca3af", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 },
   emptyText: { fontSize: 13, color: "#9ca3af" },

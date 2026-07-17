@@ -1,0 +1,118 @@
+import { useEffect, useState } from "react";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import Constants from "expo-constants";
+import { useAuth } from "@/lib/auth";
+import { api } from "@/lib/api";
+import { getPlan } from "@/lib/plans";
+
+const ORANGE = "#f97316";
+
+export default function AccountScreen() {
+  const router = useRouter();
+  const { user, logout } = useAuth();
+  const [planLabel, setPlanLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    api<{ profile: { goalType: string | null } | null }>("/api/user/diet-profile")
+      .then(({ profile }) => {
+        const plan = getPlan(profile?.goalType);
+        setPlanLabel(plan ? `${plan.emoji} ${plan.label}` : "Not set");
+      })
+      .catch(() => setPlanLabel(null));
+  }, []);
+
+  function dismiss() {
+    if (router.canGoBack()) router.back();
+    else router.replace("/");
+  }
+
+  function confirmSignOut() {
+    Alert.alert("Sign out", "Are you sure you want to sign out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Sign out",
+        style: "destructive",
+        onPress: async () => {
+          await logout();
+          if (router.canGoBack()) router.back();
+          else router.replace("/login");
+        },
+      },
+    ]);
+  }
+
+  const initial = (user?.name?.trim()?.[0] ?? user?.email?.[0] ?? "?").toUpperCase();
+  const version = Constants.expoConfig?.version ?? "1.0.0";
+
+  return (
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Settings</Text>
+        <Pressable onPress={dismiss}>
+          <Text style={styles.doneLink}>Done</Text>
+        </Pressable>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Profile */}
+        <View style={styles.profileCard}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initial}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            {!!user?.name && <Text style={styles.profileName}>{user.name}</Text>}
+            <Text style={styles.profileEmail}>{user?.email}</Text>
+          </View>
+        </View>
+
+        {/* Plan */}
+        <Text style={styles.sectionLabel}>Nutrition</Text>
+        <View style={styles.card}>
+          <Pressable style={styles.row} onPress={() => router.push("/plan")}>
+            <Text style={styles.rowLabel}>Your plan</Text>
+            <View style={styles.rowRight}>
+              <Text style={styles.rowValue}>{planLabel ?? "—"}</Text>
+              <Text style={styles.chevron}>›</Text>
+            </View>
+          </Pressable>
+        </View>
+
+        {/* Sign out */}
+        <View style={[styles.card, { marginTop: 24 }]}>
+          <Pressable style={styles.row} onPress={confirmSignOut}>
+            <Text style={styles.signOutText}>Sign out</Text>
+          </Pressable>
+        </View>
+
+        <Text style={styles.version}>Macros v{version}</Text>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#F7F7F7" },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12 },
+  headerTitle: { fontSize: 17, fontWeight: "800", color: "#1f2937" },
+  doneLink: { fontSize: 15, fontWeight: "700", color: ORANGE },
+  scrollContent: { padding: 16, paddingBottom: 40 },
+  profileCard: {
+    flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: "#fff",
+    borderRadius: 20, borderWidth: 1, borderColor: "#f0f0f0", padding: 18,
+  },
+  avatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: ORANGE, alignItems: "center", justifyContent: "center" },
+  avatarText: { color: "#fff", fontSize: 22, fontWeight: "800" },
+  profileName: { fontSize: 16, fontWeight: "700", color: "#1f2937" },
+  profileEmail: { fontSize: 13, color: "#9ca3af", marginTop: 2 },
+  sectionLabel: { fontSize: 11, fontWeight: "700", color: "#9ca3af", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, marginTop: 24 },
+  card: { backgroundColor: "#fff", borderRadius: 16, borderWidth: 1, borderColor: "#f0f0f0", overflow: "hidden" },
+  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 15 },
+  rowLabel: { fontSize: 15, fontWeight: "600", color: "#1f2937" },
+  rowRight: { flexDirection: "row", alignItems: "center", gap: 6 },
+  rowValue: { fontSize: 14, color: "#9ca3af" },
+  chevron: { fontSize: 20, color: "#d1d5db", fontWeight: "500" },
+  signOutText: { fontSize: 15, fontWeight: "700", color: "#dc2626" },
+  version: { fontSize: 12, color: "#9ca3af", textAlign: "center", marginTop: 24 },
+});

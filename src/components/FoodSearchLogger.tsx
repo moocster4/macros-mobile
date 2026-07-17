@@ -42,8 +42,18 @@ interface RecentFood {
   fatG: number;
 }
 
-export default function FoodSearchLogger({ onLogged }: { onLogged: () => void }) {
-  const [open, setOpen] = useState(false);
+export default function FoodSearchLogger({
+  onLogged, open: openProp, onClose, hideTrigger,
+}: {
+  onLogged: () => void;
+  /** When provided, the component is controlled by the parent. */
+  open?: boolean;
+  onClose?: () => void;
+  hideTrigger?: boolean;
+}) {
+  const controlled = openProp !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = controlled ? !!openProp : internalOpen;
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<FoodSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -54,7 +64,7 @@ export default function FoodSearchLogger({ onLogged }: { onLogged: () => void })
   const [loggingRecentName, setLoggingRecentName] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (!isOpen) return;
     api<{ logs: MealLogEntry[] }>("/api/user/meal-log/history")
       .then(({ logs }) => {
         const seen = new Set<string>();
@@ -75,7 +85,7 @@ export default function FoodSearchLogger({ onLogged }: { onLogged: () => void })
         setRecent(deduped);
       })
       .catch(() => setRecent([]));
-  }, [open]);
+  }, [isOpen]);
 
   useEffect(() => {
     const q = query.trim();
@@ -91,7 +101,8 @@ export default function FoodSearchLogger({ onLogged }: { onLogged: () => void })
   }, [query]);
 
   function close() {
-    setOpen(false);
+    if (controlled) onClose?.();
+    else setInternalOpen(false);
     setQuery("");
     setResults([]);
     setSelected(null);
@@ -143,11 +154,13 @@ export default function FoodSearchLogger({ onLogged }: { onLogged: () => void })
 
   return (
     <>
-      <Pressable style={styles.openButton} onPress={() => setOpen(true)}>
-        <Text style={styles.openButtonText}>🔍 Search foods</Text>
-      </Pressable>
+      {!hideTrigger && (
+        <Pressable style={styles.openButton} onPress={() => setInternalOpen(true)}>
+          <Text style={styles.openButtonText}>🔍 Search foods</Text>
+        </Pressable>
+      )}
 
-      <Modal visible={open} animationType="slide" onRequestClose={close}>
+      <Modal visible={isOpen} animationType="slide" onRequestClose={close}>
         <View style={styles.modal}>
           <View style={styles.modalHeader}>
             <TextInput

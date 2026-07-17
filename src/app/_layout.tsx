@@ -10,6 +10,8 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="login" />
         <Stack.Screen name="scan-review" options={{ presentation: "modal" }} />
+        <Stack.Screen name="plan" options={{ presentation: "modal" }} />
+        <Stack.Screen name="account" options={{ presentation: "modal" }} />
       </Stack>
     </AuthProvider>
   );

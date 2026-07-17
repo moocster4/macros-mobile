@@ -40,7 +40,8 @@
         }
       ],
       "expo-secure-store",
-      "expo-maps"
+      "expo-maps",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

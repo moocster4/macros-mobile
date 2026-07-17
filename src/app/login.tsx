@@ -12,10 +12,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Redirect } from "expo-router";
 import { useAuth } from "@/lib/auth";
+import GoogleSignInButton from "@/components/GoogleSignInButton";
 
 const ORANGE = "#f97316";
 
 type Mode = "signin" | "signup";
+
+const GOOGLE_CONFIGURED = !!process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
 
 export default function LoginScreen() {
   const { user, loading, login, signup } = useAuth();
@@ -89,6 +92,8 @@ export default function LoginScreen() {
               </Pressable>
             </View>
 
+            {GOOGLE_CONFIGURED && <GoogleSignInButton onError={setError} />}
+
             {mode === "signup" && (
               <>
                 <Text style={styles.label}>Name</Text>
@@ -160,7 +165,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#f0f0f0",
   },
-  tabRow: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#f0f0f0", marginBottom: 8 },
+  tabRow: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#f0f0f0", marginBottom: 16 },
   tab: { flex: 1, alignItems: "center", paddingBottom: 10 },
   tabText: { fontSize: 14, fontWeight: "600", color: "#9ca3af" },
   tabTextActive: { color: ORANGE },

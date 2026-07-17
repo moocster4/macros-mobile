@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { api } from "@/lib/api";
+import { caloriesFromMacros } from "@/lib/macros";
 
 const ORANGE = "#f97316";
 const EMPTY = { name: "", calories: "", proteinG: "", carbsG: "", fatG: "" };
@@ -15,6 +16,20 @@ export default function ManualLogger({ onLogged }: { onLogged: () => void }) {
     setOpen(false);
     setForm(EMPTY);
     setError(null);
+  }
+
+  function handleFieldChange(key: keyof typeof EMPTY, value: string) {
+    setForm((f) => {
+      const next = { ...f, [key]: value };
+      if (key === "proteinG" || key === "carbsG" || key === "fatG") {
+        next.calories = String(caloriesFromMacros(
+          Number(next.proteinG) || 0,
+          Number(next.carbsG)   || 0,
+          Number(next.fatG)     || 0,
+        ));
+      }
+      return next;
+    });
   }
 
   async function handleLog() {
@@ -70,7 +85,7 @@ export default function ManualLogger({ onLogged }: { onLogged: () => void }) {
             <Text style={[styles.macroLabel, { color }]}>{label}</Text>
             <TextInput
               value={form[key]}
-              onChangeText={(v) => setForm((f) => ({ ...f, [key]: v }))}
+              onChangeText={(v) => handleFieldChange(key, v)}
               keyboardType="numeric"
               placeholder="0"
               placeholderTextColor="#d1d5db"

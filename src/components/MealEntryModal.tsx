@@ -2,12 +2,14 @@ import { useState } from "react";
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { api } from "@/lib/api";
 import { caloriesFromMacros } from "@/lib/macros";
+import { MEAL_TYPES, type MealType } from "@/lib/mealType";
 
 const ORANGE = "#f97316";
 
 export interface MealLogEntry {
   id: string;
   name: string;
+  mealType: string | null;
   calories: number | null;
   proteinG: number | null;
   carbsG: number | null;
@@ -24,15 +26,18 @@ export default function MealEntryModal({
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
+  const [mealType, setMealType] = useState<MealType | null>(null);
   const [calories, setCalories] = useState("");
   const [proteinG, setProteinG] = useState("");
   const [carbsG, setCarbsG] = useState("");
   const [fatG, setFatG] = useState("");
   const [saving, setSaving] = useState(false);
+  const [favSaved, setFavSaved] = useState(false);
 
   function startEdit() {
     if (!entry) return;
     setName(entry.name);
+    setMealType((entry.mealType as MealType) ?? null);
     setCalories(entry.calories != null ? String(Math.round(entry.calories)) : "");
     setProteinG(entry.proteinG != null ? String(Math.round(entry.proteinG)) : "");
     setCarbsG(entry.carbsG != null ? String(Math.round(entry.carbsG)) : "");
@@ -42,7 +47,25 @@ export default function MealEntryModal({
 
   function close() {
     setEditing(false);
+    setFavSaved(false);
     onClose();
+  }
+
+  async function handleSaveFavorite() {
+    if (!entry || favSaved) return;
+    setFavSaved(true);
+    try {
+      await api("/api/user/saved-meals", {
+        method: "POST",
+        body: JSON.stringify({
+          name: entry.name,
+          calories: entry.calories ?? undefined,
+          proteinG: entry.proteinG ?? undefined,
+          carbsG: entry.carbsG ?? undefined,
+          fatG: entry.fatG ?? undefined,
+        }),
+      });
+    } catch { setFavSaved(false); }
   }
 
   function handleMacroChange(field: "protein" | "carbs" | "fat", value: string) {
@@ -63,6 +86,7 @@ export default function MealEntryModal({
         method: "PATCH",
         body: JSON.stringify({
           name: name.trim(),
+          mealType: mealType ?? undefined,
           calories: calories ? Number(calories) : null,
           proteinG: proteinG ? Number(proteinG) : null,
           carbsG: carbsG ? Number(carbsG) : null,
@@ -109,6 +133,11 @@ export default function MealEntryModal({
                   <Text style={styles.macroValue}>{entry.proteinG != null ? `${Math.round(entry.proteinG)}g` : "—"}</Text>
                 </View>
               </View>
+              <Pressable style={styles.favButton} onPress={handleSaveFavorite} disabled={favSaved}>
+                <Text style={[styles.favButtonText, favSaved && styles.favButtonTextSaved]}>
+                  {favSaved ? "★ Saved to favorites" : "☆ Save to favorites"}
+                </Text>
+              </Pressable>
               <View style={styles.actionRow}>
                 <Pressable style={styles.actionButton} onPress={startEdit}>
                   <Text style={styles.actionButtonText}>Edit</Text>
@@ -145,6 +174,18 @@ export default function MealEntryModal({
                   <Text style={styles.fieldLabel}>Fat</Text>
                   <TextInput value={fatG} onChangeText={(v) => handleMacroChange("fat", v)} keyboardType="numeric" style={styles.fieldInput} />
                 </View>
+              </View>
+              <Text style={[styles.fieldLabel, { alignSelf: "flex-start", marginTop: 12 }]}>Meal</Text>
+              <View style={styles.mealTypeRow}>
+                {MEAL_TYPES.map((m) => (
+                  <Pressable
+                    key={m.key}
+                    onPress={() => setMealType(m.key)}
+                    style={[styles.mealTypeChip, mealType === m.key && styles.mealTypeChipActive]}
+                  >
+                    <Text style={[styles.mealTypeChipText, mealType === m.key && styles.mealTypeChipTextActive]}>{m.label}</Text>
+                  </Pressable>
+                ))}
               </View>
               <View style={styles.actionRow}>
                 <Pressable style={styles.actionButton} onPress={() => setEditing(false)} disabled={saving}>
@@ -185,6 +226,9 @@ const styles = StyleSheet.create({
   deleteButtonText: { color: "#dc2626" },
   saveButton: { backgroundColor: ORANGE, borderColor: ORANGE },
   saveButtonText: { color: "#fff" },
+  favButton: { marginTop: 14, paddingVertical: 6 },
+  favButtonText: { fontSize: 13, fontWeight: "700", color: ORANGE },
+  favButtonTextSaved: { color: "#9ca3af" },
   closeButton: { marginTop: 10, paddingHorizontal: 20, paddingVertical: 9, borderRadius: 12, backgroundColor: "#f3f4f6" },
   closeButtonText: { fontSize: 13, fontWeight: "600", color: "#6b7280" },
   nameInput: {
@@ -198,4 +242,10 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10,
     paddingHorizontal: 10, paddingVertical: 8, fontSize: 14, color: "#111827", textAlign: "center",
   },
+  mealTypeRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6, width: "100%" },
+  mealTypeChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: "#e5e7eb", backgroundColor: "#fff" },
+  mealTypeChipActive: { borderColor: ORANGE, backgroundColor: "#fff7ed" },
+  mealTypeChipText: { fontSize: 12, fontWeight: "600", color: "#6b7280" },
+  mealTypeChipTextActive: { color: ORANGE },
 });
+

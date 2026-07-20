@@ -47,6 +47,13 @@
         {
           "cameraPermission": "Macros uses your camera to scan barcodes and food."
         }
+      ],
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "Macros reads your active energy and steps to adjust your daily calorie budget.",
+          "background": false
+        }
       ]
     ],
     "experiments": {

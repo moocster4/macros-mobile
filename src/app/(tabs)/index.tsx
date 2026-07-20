@@ -13,6 +13,8 @@ import { Redirect, useFocusEffect, useRouter } from "expo-router";
 import { getPlan } from "@/lib/plans";
 import { useAuth } from "@/lib/auth";
 import { useUnits } from "@/lib/units";
+import { MEAL_TYPES } from "@/lib/mealType";
+import { getTodayActiveEnergy, isHealthConnected } from "@/lib/healthkit";
 import { api } from "@/lib/api";
 import { toDateStr, todayStr } from "@/lib/date";
 import { RangeKey, daysForRange, aggregateMacrosByRange, aggregateWeightByRange, MacroRaw, WeightRaw } from "@/lib/chartRange";
@@ -72,6 +74,7 @@ export default function TodayScreen() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [range, setRange] = useState<RangeKey>("7D");
   const [selectedMeal, setSelectedMeal] = useState<MealLogEntry | null>(null);
+  const [activeEnergy, setActiveEnergy] = useState(0);
 
   const load = useCallback(async () => {
     const historyDays = Math.max(daysForRange(range), 30);
@@ -84,6 +87,13 @@ export default function TodayScreen() {
     setTargets(profileRes.profile);
     setHistory(historyRes.logs ?? []);
     setWeightLogs(weightRes.logs ?? []);
+
+    // Apple Health: add today's active calories to the budget (if connected).
+    if (await isHealthConnected()) {
+      setActiveEnergy(await getTodayActiveEnergy().catch(() => 0));
+    } else {
+      setActiveEnergy(0);
+    }
   }, [range]);
 
   useFocusEffect(
@@ -103,6 +113,19 @@ export default function TodayScreen() {
     () => history.filter((l) => localDate(l.loggedAt) === selectedDate),
     [history, selectedDate]
   );
+
+  // Group into meal-type sections (Breakfast/Lunch/Dinner/Snacks, then Other).
+  const mealSections = useMemo(() => {
+    const order = [...MEAL_TYPES.map((m) => m.key), null];
+    return order
+      .map((key) => {
+        const items = logsForSelectedDate.filter((l) => (l.mealType ?? null) === key);
+        const label = key ? MEAL_TYPES.find((m) => m.key === key)!.label : "Other";
+        const calories = items.reduce((s, l) => s + (l.calories ?? 0), 0);
+        return { key: key ?? "other", label, items, calories };
+      })
+      .filter((s) => s.items.length > 0);
+  }, [logsForSelectedDate]);
 
   const totalsForSelectedDate = useMemo(
     () => logsForSelectedDate.reduce(
@@ -161,6 +184,12 @@ export default function TodayScreen() {
   const hasGoals = !!targets && targets.targetCalories > 0;
   const isToday = selectedDate === todayStr();
 
+  // On today, active calories from Apple Health are added to the calorie budget.
+  const showActivity = isToday && activeEnergy > 0 && hasGoals;
+  const ringTargets = showActivity && targets
+    ? { ...targets, targetCalories: targets.targetCalories + activeEnergy }
+    : targets;
+
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <ScrollView
@@ -204,7 +233,10 @@ export default function TodayScreen() {
                     <Text style={styles.editPlanLink}>Edit</Text>
                   </Pressable>
                 </View>
-                <CombinedRings totals={totalsForSelectedDate} targets={targets!} />
+                <CombinedRings totals={totalsForSelectedDate} targets={ringTargets!} />
+                {showActivity && (
+                  <Text style={styles.activityNote}>🔥 +{activeEnergy} kcal from activity</Text>
+                )}
               </View>
             ) : (
               <Pressable style={styles.noGoalsCard} onPress={() => router.push("/plan")}>
@@ -233,21 +265,29 @@ export default function TodayScreen() {
                 {isToday ? "Nothing logged yet — tap ＋ Log food or scan to get started." : "No meals logged this day."}
               </Text>
             ) : (
-              <View style={styles.mealList}>
-                {logsForSelectedDate.map((entry) => (
-                  <Pressable key={entry.id} style={styles.mealRow} onPress={() => setSelectedMeal(entry)}>
-                    <Text style={styles.mealName} numberOfLines={1}>{entry.name}</Text>
-                    {entry.calories != null && (
-                      <View style={styles.mealMacros}>
-                        <Text style={styles.mealMacroText}>{Math.round(entry.calories)} kcal</Text>
-                        {entry.proteinG != null && <Text style={[styles.mealMacroText, { color: "#f97316" }]}>{Math.round(entry.proteinG)}g P</Text>}
-                        {entry.carbsG != null && <Text style={[styles.mealMacroText, { color: "#f59e0b" }]}>{Math.round(entry.carbsG)}g C</Text>}
-                        {entry.fatG != null && <Text style={[styles.mealMacroText, { color: "#3b82f6" }]}>{Math.round(entry.fatG)}g F</Text>}
-                      </View>
-                    )}
-                  </Pressable>
-                ))}
-              </View>
+              mealSections.map((section) => (
+                <View key={section.key} style={{ marginBottom: 12 }}>
+                  <View style={styles.mealSectionHeader}>
+                    <Text style={styles.mealSectionLabel}>{section.label}</Text>
+                    <Text style={styles.mealSectionCals}>{Math.round(section.calories)} kcal</Text>
+                  </View>
+                  <View style={styles.mealList}>
+                    {section.items.map((entry) => (
+                      <Pressable key={entry.id} style={styles.mealRow} onPress={() => setSelectedMeal(entry)}>
+                        <Text style={styles.mealName} numberOfLines={1}>{entry.name}</Text>
+                        {entry.calories != null && (
+                          <View style={styles.mealMacros}>
+                            <Text style={styles.mealMacroText}>{Math.round(entry.calories)} kcal</Text>
+                            {entry.proteinG != null && <Text style={[styles.mealMacroText, { color: "#f97316" }]}>{Math.round(entry.proteinG)}g P</Text>}
+                            {entry.carbsG != null && <Text style={[styles.mealMacroText, { color: "#f59e0b" }]}>{Math.round(entry.carbsG)}g C</Text>}
+                            {entry.fatG != null && <Text style={[styles.mealMacroText, { color: "#3b82f6" }]}>{Math.round(entry.fatG)}g F</Text>}
+                          </View>
+                        )}
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              ))
             )}
 
             {isToday && (
@@ -294,6 +334,7 @@ const styles = StyleSheet.create({
   ringsHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%", marginBottom: 12 },
   planPill: { fontSize: 13, fontWeight: "700", color: "#9a3412", backgroundColor: "#fff7ed", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, overflow: "hidden" },
   editPlanLink: { fontSize: 13, fontWeight: "700", color: ORANGE },
+  activityNote: { fontSize: 12, fontWeight: "600", color: "#ea580c", marginTop: 10 },
   noGoalsCard: {
     backgroundColor: "#fff", borderRadius: 20, padding: 20, alignItems: "center",
     borderWidth: 1, borderColor: "#f0f0f0",
@@ -305,6 +346,9 @@ const styles = StyleSheet.create({
   chartCard: { backgroundColor: "#fff", borderRadius: 20, padding: 16, borderWidth: 1, borderColor: "#f0f0f0" },
   sectionTitle: { fontSize: 11, fontWeight: "700", color: "#9ca3af", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 },
   emptyText: { fontSize: 13, color: "#9ca3af" },
+  mealSectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6, paddingHorizontal: 2 },
+  mealSectionLabel: { fontSize: 13, fontWeight: "700", color: "#374151" },
+  mealSectionCals: { fontSize: 12, fontWeight: "600", color: "#9ca3af" },
   mealList: { backgroundColor: "#fff", borderRadius: 16, borderWidth: 1, borderColor: "#f0f0f0", overflow: "hidden" },
   mealRow: { paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#f9fafb" },
   mealName: { fontSize: 14, fontWeight: "600", color: "#1f2937" },

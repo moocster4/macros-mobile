@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { api, ApiError } from "@/lib/api";
 import { caloriesFromMacros } from "@/lib/macros";
+import { currentMealType } from "@/lib/mealType";
 
 const ORANGE = "#f97316";
 
@@ -99,6 +100,7 @@ export default function ScanReviewScreen() {
         method: "POST",
         body: JSON.stringify({
           name:     form.name || "Food photo",
+          mealType: currentMealType(),
           calories: Number(form.calories) || 0,
           proteinG: Number(form.proteinG) || 0,
           carbsG:   Number(form.carbsG)   || 0,

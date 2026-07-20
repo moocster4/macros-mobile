@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { useUnits } from "@/lib/units";
 import { api } from "@/lib/api";
 import { getPlan } from "@/lib/plans";
+import { initHealth, isHealthConnected, isHealthSupported, setHealthConnected } from "@/lib/healthkit";
 
 const ORANGE = "#f97316";
 
@@ -15,6 +16,7 @@ export default function AccountScreen() {
   const { user, logout } = useAuth();
   const { unitSystem, setUnitSystem } = useUnits();
   const [planLabel, setPlanLabel] = useState<string | null>(null);
+  const [healthConnected, setHealthConnectedState] = useState(false);
 
   useEffect(() => {
     api<{ profile: { goalType: string | null } | null }>("/api/user/diet-profile")
@@ -23,7 +25,23 @@ export default function AccountScreen() {
         setPlanLabel(plan ? `${plan.emoji} ${plan.label}` : "Not set");
       })
       .catch(() => setPlanLabel(null));
+    isHealthConnected().then(setHealthConnectedState);
   }, []);
+
+  async function toggleHealth() {
+    if (healthConnected) {
+      await setHealthConnected(false);
+      setHealthConnectedState(false);
+      return;
+    }
+    const ok = await initHealth();
+    if (ok) {
+      await setHealthConnected(true);
+      setHealthConnectedState(true);
+    } else {
+      Alert.alert("Apple Health", "Enable access in Settings › Health › Data Access & Devices › Macros.");
+    }
+  }
 
   function dismiss() {
     if (router.canGoBack()) router.back();
@@ -101,6 +119,20 @@ export default function AccountScreen() {
               ))}
             </View>
           </View>
+          {isHealthSupported() && (
+            <>
+              <View style={styles.rowDivider} />
+              <Pressable style={styles.row} onPress={toggleHealth}>
+                <Text style={styles.rowLabel}>❤️ Apple Health</Text>
+                <View style={styles.rowRight}>
+                  <Text style={[styles.rowValue, healthConnected && { color: "#16a34a" }]}>
+                    {healthConnected ? "Connected" : "Connect"}
+                  </Text>
+                  {!healthConnected && <Text style={styles.chevron}>›</Text>}
+                </View>
+              </Pressable>
+            </>
+          )}
         </View>
 
         {/* Sign out */}
@@ -137,6 +169,7 @@ const styles = StyleSheet.create({
   rowRight: { flexDirection: "row", alignItems: "center", gap: 6 },
   rowValue: { fontSize: 14, color: "#9ca3af" },
   chevron: { fontSize: 20, color: "#d1d5db", fontWeight: "500" },
+  rowDivider: { height: 1, backgroundColor: "#f3f4f6", marginHorizontal: 16 },
   segment: { flexDirection: "row", backgroundColor: "#f3f4f6", borderRadius: 10, padding: 2 },
   segmentItem: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8 },
   segmentItemActive: { backgroundColor: "#fff", shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },

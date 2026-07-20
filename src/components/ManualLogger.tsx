@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { api } from "@/lib/api";
 import { caloriesFromMacros } from "@/lib/macros";
+import { currentMealType } from "@/lib/mealType";
 
 const ORANGE = "#f97316";
 const EMPTY = { name: "", calories: "", proteinG: "", carbsG: "", fatG: "" };
@@ -62,6 +63,7 @@ export default function ManualLogger({
         method: "POST",
         body: JSON.stringify({
           name:     form.name.trim(),
+          mealType: currentMealType(),
           calories: Number(form.calories) || 0,
           proteinG: Number(form.proteinG) || 0,
           carbsG:   Number(form.carbsG)   || 0,

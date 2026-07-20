@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
 import { api } from "@/lib/api";
+import { currentMealType } from "@/lib/mealType";
 
 const ORANGE = "#f97316";
 
@@ -71,6 +72,7 @@ export default function ScanBarcodeScreen() {
         method: "POST",
         body: JSON.stringify({
           name: name.trim(),
+          mealType: currentMealType(),
           calories: Math.round(product.calories * m),
           proteinG: Math.round(product.proteinG * m * 10) / 10,
           carbsG:   Math.round(product.carbsG   * m * 10) / 10,

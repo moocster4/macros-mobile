@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { api } from "@/lib/api";
+import { currentMealType } from "@/lib/mealType";
 
 const ORANGE = "#f97316";
 
@@ -42,6 +43,15 @@ interface RecentFood {
   fatG: number;
 }
 
+interface SavedMeal {
+  id: string;
+  name: string;
+  calories: number | null;
+  proteinG: number | null;
+  carbsG: number | null;
+  fatG: number | null;
+}
+
 export default function FoodSearchLogger({
   onLogged, open: openProp, onClose, hideTrigger,
 }: {
@@ -61,10 +71,18 @@ export default function FoodSearchLogger({
   const [multiplier, setMultiplier] = useState("1");
   const [logging, setLogging] = useState(false);
   const [recent, setRecent] = useState<RecentFood[] | null>(null);
+  const [favorites, setFavorites] = useState<SavedMeal[]>([]);
   const [loggingRecentName, setLoggingRecentName] = useState<string | null>(null);
+
+  function loadFavorites() {
+    api<{ savedMeals: SavedMeal[] }>("/api/user/saved-meals")
+      .then(({ savedMeals }) => setFavorites(savedMeals ?? []))
+      .catch(() => setFavorites([]));
+  }
 
   useEffect(() => {
     if (!isOpen) return;
+    loadFavorites();
     api<{ logs: MealLogEntry[] }>("/api/user/meal-log/history")
       .then(({ logs }) => {
         const seen = new Set<string>();
@@ -118,6 +136,7 @@ export default function FoodSearchLogger({
         method: "POST",
         body: JSON.stringify({
           name:     selected.name,
+          mealType: currentMealType(),
           calories: Math.round(selected.calories * m),
           proteinG: Math.round(selected.proteinG * m * 10) / 10,
           carbsG:   Math.round(selected.carbsG   * m * 10) / 10,
@@ -138,7 +157,7 @@ export default function FoodSearchLogger({
     try {
       await api("/api/user/meal-log", {
         method: "POST",
-        body: JSON.stringify(item),
+        body: JSON.stringify({ ...item, mealType: currentMealType() }),
       });
       onLogged();
       close();
@@ -147,6 +166,34 @@ export default function FoodSearchLogger({
     } finally {
       setLoggingRecentName(null);
     }
+  }
+
+  async function handleLogFavorite(fav: SavedMeal) {
+    setLoggingRecentName(fav.id);
+    try {
+      await api("/api/user/meal-log", {
+        method: "POST",
+        body: JSON.stringify({
+          name:     fav.name,
+          mealType: currentMealType(),
+          calories: fav.calories ?? 0,
+          proteinG: fav.proteinG ?? 0,
+          carbsG:   fav.carbsG   ?? 0,
+          fatG:     fav.fatG     ?? 0,
+        }),
+      });
+      onLogged();
+      close();
+    } catch {
+      /* silently fail */
+    } finally {
+      setLoggingRecentName(null);
+    }
+  }
+
+  async function handleRemoveFavorite(id: string) {
+    setFavorites((prev) => prev.filter((f) => f.id !== id));
+    api(`/api/user/saved-meals/${id}`, { method: "DELETE" }).catch(() => loadFavorites());
   }
 
   const m = Number(multiplier) || 0;
@@ -261,13 +308,43 @@ export default function FoodSearchLogger({
               contentContainerStyle={{ padding: 12, gap: 6 }}
               keyboardShouldPersistTaps="handled"
               ListHeaderComponent={
-                recent === null ? (
-                  <ActivityIndicator color={ORANGE} style={{ marginTop: 16 }} />
-                ) : recent.length > 0 ? (
-                  <Text style={styles.sectionLabel}>RECENT</Text>
-                ) : (
-                  <Text style={styles.emptyText}>Search for a food to get started</Text>
-                )
+                <>
+                  {favorites.length > 0 && (
+                    <>
+                      <Text style={styles.sectionLabel}>FAVORITES</Text>
+                      <View style={{ gap: 6, marginBottom: 8 }}>
+                        {favorites.map((fav) => (
+                          <View key={fav.id} style={styles.resultCard}>
+                            <Pressable
+                              style={{ flex: 1 }}
+                              onPress={() => handleLogFavorite(fav)}
+                              disabled={loggingRecentName === fav.id}
+                            >
+                              <Text style={styles.resultName} numberOfLines={1}>⭐ {fav.name}</Text>
+                              <Text style={styles.resultSub}>
+                                {fav.calories ?? 0} kcal · {Math.round(fav.proteinG ?? 0)}P {Math.round(fav.carbsG ?? 0)}C {Math.round(fav.fatG ?? 0)}F
+                              </Text>
+                            </Pressable>
+                            {loggingRecentName === fav.id
+                              ? <ActivityIndicator color={ORANGE} size="small" />
+                              : (
+                                <Pressable onPress={() => handleRemoveFavorite(fav.id)} hitSlop={8}>
+                                  <Text style={styles.removeFav}>×</Text>
+                                </Pressable>
+                              )}
+                          </View>
+                        ))}
+                      </View>
+                    </>
+                  )}
+                  {recent === null ? (
+                    <ActivityIndicator color={ORANGE} style={{ marginTop: 16 }} />
+                  ) : recent.length > 0 ? (
+                    <Text style={styles.sectionLabel}>RECENT</Text>
+                  ) : favorites.length === 0 ? (
+                    <Text style={styles.emptyText}>Search for a food to get started</Text>
+                  ) : null}
+                </>
               }
               renderItem={({ item }) => (
                 <Pressable
@@ -318,6 +395,7 @@ const styles = StyleSheet.create({
   resultCal: { fontSize: 13, fontWeight: "700", color: "#374151" },
   resultMacros: { fontSize: 10, color: "#9ca3af", marginTop: 2 },
   quickAdd: { fontSize: 12, fontWeight: "700", color: ORANGE },
+  removeFav: { fontSize: 22, fontWeight: "400", color: "#d1d5db", paddingHorizontal: 4 },
   reviewCard: { margin: 16, backgroundColor: "#fff", borderRadius: 20, padding: 20, borderWidth: 1, borderColor: "#f0f0f0" },
   reviewName: { fontSize: 18, fontWeight: "800", color: "#111827" },
   reviewBrand: { fontSize: 12, color: "#9ca3af", marginTop: 2 },

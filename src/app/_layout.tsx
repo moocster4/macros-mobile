@@ -16,6 +16,7 @@ export default function RootLayout() {
           <Stack.Screen name="scan-barcode" options={{ presentation: "fullScreenModal" }} />
           <Stack.Screen name="plan" options={{ presentation: "modal" }} />
           <Stack.Screen name="account" options={{ presentation: "modal" }} />
+          <Stack.Screen name="insights" options={{ presentation: "modal" }} />
         </Stack>
       </UnitsProvider>
     </AuthProvider>

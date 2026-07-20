@@ -24,6 +24,7 @@ import CalendarPicker from "@/components/CalendarPicker";
 import LogFoodMenu from "@/components/LogFoodMenu";
 import DailyTasksChecklist from "@/components/DailyTasksChecklist";
 import WeightLogger from "@/components/WeightLogger";
+import WaterTracker from "@/components/WaterTracker";
 import WeeklyChart from "@/components/WeeklyChart";
 import WeightChart from "@/components/WeightChart";
 import RangeSelector from "@/components/RangeSelector";
@@ -295,6 +296,8 @@ export default function TodayScreen() {
                 <View style={{ height: 12 }} />
                 <DailyTasksChecklist />
                 <View style={{ height: 12 }} />
+                <WaterTracker />
+                <View style={{ height: 12 }} />
                 <WeightLogger latestKg={latestWeightKg} onLogged={load} />
               </>
             )}
@@ -311,6 +314,16 @@ export default function TodayScreen() {
               <Text style={styles.sectionTitle}>Weight</Text>
               <WeightChart data={weightBuckets} onChanged={load} />
             </View>
+
+            <View style={{ height: 12 }} />
+            <Pressable style={styles.insightsCard} onPress={() => router.push("/insights")}>
+              <Text style={styles.insightsEmoji}>📊</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.insightsTitle}>Insights</Text>
+                <Text style={styles.insightsSub}>Your weekly trends and coaching tips</Text>
+              </View>
+              <Text style={styles.insightsChevron}>›</Text>
+            </Pressable>
           </>
         )}
       </ScrollView>
@@ -344,6 +357,11 @@ const styles = StyleSheet.create({
   noGoalsButton: { marginTop: 14, backgroundColor: ORANGE, borderRadius: 12, paddingHorizontal: 22, paddingVertical: 10 },
   noGoalsButtonText: { color: "#fff", fontWeight: "800", fontSize: 14 },
   chartCard: { backgroundColor: "#fff", borderRadius: 20, padding: 16, borderWidth: 1, borderColor: "#f0f0f0" },
+  insightsCard: { flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: "#fff", borderRadius: 20, padding: 18, borderWidth: 1, borderColor: "#f0f0f0" },
+  insightsEmoji: { fontSize: 24 },
+  insightsTitle: { fontSize: 15, fontWeight: "700", color: "#1f2937" },
+  insightsSub: { fontSize: 12, color: "#9ca3af", marginTop: 2 },
+  insightsChevron: { fontSize: 22, color: "#d1d5db", fontWeight: "500" },
   sectionTitle: { fontSize: 11, fontWeight: "700", color: "#9ca3af", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 },
   emptyText: { fontSize: 13, color: "#9ca3af" },
   mealSectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6, paddingHorizontal: 2 },

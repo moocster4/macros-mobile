@@ -25,7 +25,7 @@ import LogFoodMenu from "@/components/LogFoodMenu";
 import DailyTasksChecklist from "@/components/DailyTasksChecklist";
 import WeightLogger from "@/components/WeightLogger";
 import WaterTracker from "@/components/WaterTracker";
-import WorkoutLogger, { type WorkoutEntry } from "@/components/WorkoutLogger";
+import { type WorkoutEntry } from "@/components/WorkoutLogger";
 import WeeklyChart from "@/components/WeeklyChart";
 import WeightChart from "@/components/WeightChart";
 import RangeSelector from "@/components/RangeSelector";
@@ -301,8 +301,6 @@ export default function TodayScreen() {
               <>
                 <View style={{ height: 12 }} />
                 <DailyTasksChecklist />
-                <View style={{ height: 12 }} />
-                <WorkoutLogger workouts={workouts} onChanged={load} />
                 <View style={{ height: 12 }} />
                 <WaterTracker />
                 <View style={{ height: 12 }} />

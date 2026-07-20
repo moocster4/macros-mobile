@@ -46,6 +46,10 @@ export default function TabsLayout() {
         options={{ title: "Today", tabBarIcon: () => <TabIcon emoji="📊" /> }}
       />
       <Tabs.Screen
+        name="workouts"
+        options={{ title: "Workouts", tabBarIcon: () => <TabIcon emoji="🏋️" /> }}
+      />
+      <Tabs.Screen
         name="scan"
         options={{
           title: "",

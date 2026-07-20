@@ -11,6 +11,7 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="login" />
+          <Stack.Screen name="onboarding" />
           <Stack.Screen name="scan-review" options={{ presentation: "modal" }} />
           <Stack.Screen name="scan-barcode" options={{ presentation: "fullScreenModal" }} />
           <Stack.Screen name="plan" options={{ presentation: "modal" }} />

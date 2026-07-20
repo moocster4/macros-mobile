@@ -28,6 +28,8 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // New signups go through onboarding; sign-ins and restored sessions go to Today.
+  const [postAuthDest, setPostAuthDest] = useState<"/" | "/onboarding">("/");
 
   if (loading) {
     return (
@@ -38,7 +40,7 @@ export default function LoginScreen() {
   }
 
   if (user) {
-    return <Redirect href="/" />;
+    return <Redirect href={postAuthDest} />;
   }
 
   function switchMode(next: Mode) {
@@ -61,6 +63,7 @@ export default function LoginScreen() {
       if (mode === "signin") {
         await login(email.trim(), password);
       } else {
+        setPostAuthDest("/onboarding");
         await signup(name.trim(), email.trim(), password);
       }
     } catch (err) {

@@ -1,22 +1,26 @@
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { api } from "@/lib/api";
+import { useUnits } from "@/lib/units";
 
 const ORANGE = "#f97316";
 
-export default function WeightLogger({ latestLbs, onLogged }: { latestLbs: number | null; onLogged: () => void }) {
+export default function WeightLogger({ latestKg, onLogged }: { latestKg: number | null; onLogged: () => void }) {
+  const { weightUnit, kgToDisplay, displayToKg } = useUnits();
   const [editing, setEditing] = useState(false);
   const [input, setInput] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const latestDisplay = latestKg != null ? kgToDisplay(latestKg) : null;
+
   async function handleSave() {
-    const lbs = Number(input);
-    if (!lbs || lbs <= 0) return;
+    const val = Number(input);
+    if (!val || val <= 0) return;
     setSaving(true);
     try {
       await api("/api/user/weight-log", {
         method: "POST",
-        body: JSON.stringify({ weightKg: lbs / 2.20462 }),
+        body: JSON.stringify({ weightKg: displayToKg(val) }),
       });
       setInput("");
       setEditing(false);
@@ -29,8 +33,8 @@ export default function WeightLogger({ latestLbs, onLogged }: { latestLbs: numbe
       <View style={styles.header}>
         <Text style={styles.sectionTitle}>Weight</Text>
         {!editing && (
-          <Pressable onPress={() => { setEditing(true); setInput(latestLbs != null ? latestLbs.toFixed(1) : ""); }}>
-            <Text style={styles.actionLink}>{latestLbs != null ? "Update" : "+ Log weight"}</Text>
+          <Pressable onPress={() => { setEditing(true); setInput(latestDisplay != null ? latestDisplay.toFixed(1) : ""); }}>
+            <Text style={styles.actionLink}>{latestDisplay != null ? "Update" : "+ Log weight"}</Text>
           </Pressable>
         )}
       </View>
@@ -41,12 +45,12 @@ export default function WeightLogger({ latestLbs, onLogged }: { latestLbs: numbe
             value={input}
             onChangeText={setInput}
             keyboardType="numeric"
-            placeholder="e.g. 175"
+            placeholder={weightUnit === "kg" ? "e.g. 80" : "e.g. 175"}
             placeholderTextColor="#9ca3af"
             autoFocus
             style={styles.input}
           />
-          <Text style={styles.unitLabel}>lbs</Text>
+          <Text style={styles.unitLabel}>{weightUnit}</Text>
           <Pressable onPress={() => setEditing(false)} disabled={saving}>
             <Text style={styles.cancelLink}>Cancel</Text>
           </Pressable>
@@ -54,9 +58,9 @@ export default function WeightLogger({ latestLbs, onLogged }: { latestLbs: numbe
             {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.saveButtonText}>Save</Text>}
           </Pressable>
         </View>
-      ) : latestLbs != null ? (
+      ) : latestDisplay != null ? (
         <Text style={styles.singleValue}>
-          {latestLbs.toFixed(1)} <Text style={styles.singleUnit}>lbs</Text>
+          {latestDisplay.toFixed(1)} <Text style={styles.singleUnit}>{weightUnit}</Text>
         </Text>
       ) : (
         <Text style={styles.emptyText}>No weight logged yet — track it to see your trend over time.</Text>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
 import FoodSearchLogger from "./FoodSearchLogger";
 import ManualLogger from "./ManualLogger";
 
@@ -8,6 +9,7 @@ const ORANGE = "#f97316";
 type Mode = null | "search" | "manual";
 
 export default function LogFoodMenu({ onLogged }: { onLogged: () => void }) {
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mode, setMode] = useState<Mode>(null);
 
@@ -16,6 +18,11 @@ export default function LogFoodMenu({ onLogged }: { onLogged: () => void }) {
   function choose(next: Exclude<Mode, null>) {
     setMenuOpen(false);
     setTimeout(() => setMode(next), 250);
+  }
+
+  function openBarcode() {
+    setMenuOpen(false);
+    setTimeout(() => router.push("/scan-barcode"), 250);
   }
 
   return (
@@ -28,6 +35,13 @@ export default function LogFoodMenu({ onLogged }: { onLogged: () => void }) {
         <Pressable style={styles.sheetBackdrop} onPress={() => setMenuOpen(false)}>
           <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
             <View style={styles.handle} />
+            <Pressable style={styles.row} onPress={openBarcode}>
+              <Text style={styles.rowEmoji}>📷</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>Scan barcode</Text>
+                <Text style={styles.rowSub}>Point at a packaged food&apos;s barcode</Text>
+              </View>
+            </Pressable>
             <Pressable style={styles.row} onPress={() => choose("search")}>
               <Text style={styles.rowEmoji}>🔍</Text>
               <View style={{ flex: 1 }}>

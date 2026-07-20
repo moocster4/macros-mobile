@@ -2,11 +2,13 @@ import { useState } from "react";
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import Svg, { Path, Circle } from "react-native-svg";
 import { api } from "@/lib/api";
+import { useUnits } from "@/lib/units";
 import type { WeightBucket } from "@/lib/chartRange";
 
 const BLUE = "#3b82f6";
 
 export default function WeightChart({ data, onChanged }: { data: WeightBucket[]; onChanged: () => void }) {
+  const { weightUnit, displayToKg } = useUnits();
   const [selected, setSelected] = useState<WeightBucket | null>(null);
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
@@ -56,13 +58,13 @@ export default function WeightChart({ data, onChanged }: { data: WeightBucket[];
 
   async function handleSaveEdit() {
     if (!selected?.id) return;
-    const lbs = Number(editValue);
-    if (!lbs || lbs <= 0) return;
+    const val = Number(editValue);
+    if (!val || val <= 0) return;
     setSaving(true);
     try {
       await api(`/api/user/weight-log/${selected.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ weightKg: lbs / 2.20462 }),
+        body: JSON.stringify({ weightKg: displayToKg(val) }),
       });
       onChanged();
       close();
@@ -83,10 +85,10 @@ export default function WeightChart({ data, onChanged }: { data: WeightBucket[];
     <View>
       <View style={styles.headerRow}>
         <Text style={styles.value}>{last.toFixed(1)}</Text>
-        <Text style={styles.unit}>lbs</Text>
+        <Text style={styles.unit}>{weightUnit}</Text>
         {Math.abs(delta) >= 0.1 && (
           <Text style={styles.delta}>
-            {delta > 0 ? "↑" : "↓"} {Math.abs(delta).toFixed(1)} lbs this period
+            {delta > 0 ? "↑" : "↓"} {Math.abs(delta).toFixed(1)} {weightUnit} this period
           </Text>
         )}
       </View>
@@ -114,7 +116,7 @@ export default function WeightChart({ data, onChanged }: { data: WeightBucket[];
             {selected && !editing && (
               <>
                 <Text style={styles.cardTitle}>{selected.label}</Text>
-                <Text style={styles.cardValue}>{selected.weightLbs.toFixed(1)} <Text style={styles.cardUnit}>lbs</Text></Text>
+                <Text style={styles.cardValue}>{selected.weightLbs.toFixed(1)} <Text style={styles.cardUnit}>{weightUnit}</Text></Text>
                 {selected.id ? (
                   <View style={styles.actionRow}>
                     <Pressable style={styles.actionButton} onPress={() => setEditing(true)}>
@@ -143,7 +145,7 @@ export default function WeightChart({ data, onChanged }: { data: WeightBucket[];
                     autoFocus
                     style={styles.editInput}
                   />
-                  <Text style={styles.cardUnit}>lbs</Text>
+                  <Text style={styles.cardUnit}>{weightUnit}</Text>
                 </View>
                 <View style={styles.actionRow}>
                   <Pressable style={styles.actionButton} onPress={() => setEditing(false)} disabled={saving}>

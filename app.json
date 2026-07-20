@@ -11,7 +11,7 @@
       "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.macros.app",
       "infoPlist": {
-        "NSCameraUsageDescription": "Macros uses your camera to estimate calories and macros from photos of your food, and to scan restaurant menus.",
+        "NSCameraUsageDescription": "Macros uses your camera to estimate calories and macros from photos of your food, scan barcodes, and scan restaurant menus.",
         "NSPhotoLibraryUsageDescription": "Macros needs access to your photos so you can log food from existing pictures.",
         "NSLocationWhenInUseUsageDescription": "Macros uses your location to find nearby restaurants that fit your macros."
       }
@@ -41,7 +41,13 @@
       ],
       "expo-secure-store",
       "expo-maps",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Macros uses your camera to scan barcodes and food."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

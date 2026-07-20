@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import Constants from "expo-constants";
 import { useAuth } from "@/lib/auth";
+import { useUnits } from "@/lib/units";
 import { api } from "@/lib/api";
 import { getPlan } from "@/lib/plans";
 
@@ -12,6 +13,7 @@ const ORANGE = "#f97316";
 export default function AccountScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { unitSystem, setUnitSystem } = useUnits();
   const [planLabel, setPlanLabel] = useState<string | null>(null);
 
   useEffect(() => {
@@ -79,6 +81,28 @@ export default function AccountScreen() {
           </Pressable>
         </View>
 
+        {/* Preferences */}
+        <Text style={styles.sectionLabel}>Preferences</Text>
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Units</Text>
+            <View style={styles.segment}>
+              {([
+                { value: "imperial" as const, label: "lbs / ft" },
+                { value: "metric" as const,   label: "kg / cm" },
+              ]).map((opt) => (
+                <Pressable
+                  key={opt.value}
+                  onPress={() => setUnitSystem(opt.value)}
+                  style={[styles.segmentItem, unitSystem === opt.value && styles.segmentItemActive]}
+                >
+                  <Text style={[styles.segmentText, unitSystem === opt.value && styles.segmentTextActive]}>{opt.label}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        </View>
+
         {/* Sign out */}
         <View style={[styles.card, { marginTop: 24 }]}>
           <Pressable style={styles.row} onPress={confirmSignOut}>
@@ -113,6 +137,11 @@ const styles = StyleSheet.create({
   rowRight: { flexDirection: "row", alignItems: "center", gap: 6 },
   rowValue: { fontSize: 14, color: "#9ca3af" },
   chevron: { fontSize: 20, color: "#d1d5db", fontWeight: "500" },
+  segment: { flexDirection: "row", backgroundColor: "#f3f4f6", borderRadius: 10, padding: 2 },
+  segmentItem: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8 },
+  segmentItemActive: { backgroundColor: "#fff", shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
+  segmentText: { fontSize: 13, fontWeight: "600", color: "#9ca3af" },
+  segmentTextActive: { color: ORANGE },
   signOutText: { fontSize: 15, fontWeight: "700", color: "#dc2626" },
   version: { fontSize: 12, color: "#9ca3af", textAlign: "center", marginTop: 24 },
 });

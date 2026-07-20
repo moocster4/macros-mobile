@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { api } from "@/lib/api";
+import { useUnits } from "@/lib/units";
 import {
   ACTIVITY_OPTIONS,
   CUSTOM_DEFAULT,
@@ -40,6 +41,7 @@ interface FullProfile {
 
 export default function PlanScreen() {
   const router = useRouter();
+  const { metric, weightUnit, kgToDisplay, displayToKg } = useUnits();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -49,10 +51,11 @@ export default function PlanScreen() {
     else router.replace("/");
   }
 
-  // Body stats (imperial input, converted to metric on save)
+  // Body stats — inputs are in the user's chosen units, converted to metric on save.
   const [heightFt, setHeightFt] = useState("");
   const [heightIn, setHeightIn] = useState("");
-  const [weightLbs, setWeightLbs] = useState("");
+  const [heightCmInput, setHeightCmInput] = useState("");
+  const [weightInput, setWeightInput] = useState("");
   const [age, setAge] = useState("");
   const [sex, setSex] = useState("");
   const [activity, setActivity] = useState("");
@@ -70,11 +73,15 @@ export default function PlanScreen() {
       .then(({ profile }) => {
         if (!profile) return;
         if (profile.heightCm) {
-          const totalIn = profile.heightCm / 2.54;
-          setHeightFt(String(Math.floor(totalIn / 12)));
-          setHeightIn(String(Math.round(totalIn % 12)));
+          if (metric) {
+            setHeightCmInput(String(Math.round(profile.heightCm)));
+          } else {
+            const totalIn = profile.heightCm / 2.54;
+            setHeightFt(String(Math.floor(totalIn / 12)));
+            setHeightIn(String(Math.round(totalIn % 12)));
+          }
         }
-        if (profile.weightKg) setWeightLbs(String(Math.round(profile.weightKg * 2.20462)));
+        if (profile.weightKg) setWeightInput(String(Math.round(kgToDisplay(profile.weightKg))));
         if (profile.age) setAge(String(profile.age));
         if (profile.sex) setSex(profile.sex);
         if (profile.activityLevel) setActivity(profile.activityLevel);
@@ -94,10 +101,10 @@ export default function PlanScreen() {
       .finally(() => setLoading(false));
   }, []);
 
-  const weightKg = weightLbs ? Number(weightLbs) / 2.20462 : null;
-  const heightCm = (heightFt || heightIn)
-    ? ((Number(heightFt) || 0) * 12 + (Number(heightIn) || 0)) * 2.54
-    : null;
+  const weightKg = weightInput ? displayToKg(Number(weightInput)) : null;
+  const heightCm = metric
+    ? (heightCmInput ? Number(heightCmInput) : null)
+    : ((heightFt || heightIn) ? ((Number(heightFt) || 0) * 12 + (Number(heightIn) || 0)) * 2.54 : null);
 
   const estMaintenance = useMemo(() => {
     if (!weightKg || !heightCm || !age || !sex || !activity) return null;
@@ -178,18 +185,27 @@ export default function PlanScreen() {
           <View style={styles.fieldRow}>
             <Text style={styles.fieldLabel}>Height</Text>
             <View style={styles.inlineInputs}>
-              <TextInput value={heightFt} onChangeText={setHeightFt} keyboardType="numeric" placeholder="5" placeholderTextColor="#d1d5db" style={styles.smallInput} />
-              <Text style={styles.unit}>ft</Text>
-              <TextInput value={heightIn} onChangeText={setHeightIn} keyboardType="numeric" placeholder="10" placeholderTextColor="#d1d5db" style={styles.smallInput} />
-              <Text style={styles.unit}>in</Text>
+              {metric ? (
+                <>
+                  <TextInput value={heightCmInput} onChangeText={setHeightCmInput} keyboardType="numeric" placeholder="178" placeholderTextColor="#d1d5db" style={styles.smallInput} />
+                  <Text style={styles.unit}>cm</Text>
+                </>
+              ) : (
+                <>
+                  <TextInput value={heightFt} onChangeText={setHeightFt} keyboardType="numeric" placeholder="5" placeholderTextColor="#d1d5db" style={styles.smallInput} />
+                  <Text style={styles.unit}>ft</Text>
+                  <TextInput value={heightIn} onChangeText={setHeightIn} keyboardType="numeric" placeholder="10" placeholderTextColor="#d1d5db" style={styles.smallInput} />
+                  <Text style={styles.unit}>in</Text>
+                </>
+              )}
             </View>
           </View>
           <View style={styles.divider} />
           <View style={styles.fieldRow}>
             <Text style={styles.fieldLabel}>Weight</Text>
             <View style={styles.inlineInputs}>
-              <TextInput value={weightLbs} onChangeText={setWeightLbs} keyboardType="numeric" placeholder="175" placeholderTextColor="#d1d5db" style={styles.smallInput} />
-              <Text style={styles.unit}>lbs</Text>
+              <TextInput value={weightInput} onChangeText={setWeightInput} keyboardType="numeric" placeholder={metric ? "80" : "175"} placeholderTextColor="#d1d5db" style={styles.smallInput} />
+              <Text style={styles.unit}>{weightUnit}</Text>
             </View>
           </View>
           <View style={styles.divider} />

@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Redirect, useFocusEffect, useRouter } from "expo-router";
 import { getPlan } from "@/lib/plans";
 import { useAuth } from "@/lib/auth";
+import { useUnits } from "@/lib/units";
 import { api } from "@/lib/api";
 import { toDateStr, todayStr } from "@/lib/date";
 import { RangeKey, daysForRange, aggregateMacrosByRange, aggregateWeightByRange, MacroRaw, WeightRaw } from "@/lib/chartRange";
@@ -61,6 +62,7 @@ function dateLabel(dateStr: string) {
 export default function TodayScreen() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { kgToDisplay } = useUnits();
   const [targets, setTargets] = useState<DietProfile | null>(null);
   const [history, setHistory] = useState<MealLogEntry[]>([]);
   const [weightLogs, setWeightLogs] = useState<WeightLogEntry[]>([]);
@@ -131,15 +133,17 @@ export default function TodayScreen() {
 
   const weeklyMacros = useMemo(() => aggregateMacrosByRange(dailyMacroRaw, range), [dailyMacroRaw, range]);
 
+  // Chart values are in the user's display unit; field name stays weightLbs (unit-agnostic math).
   const weightRaw = useMemo<WeightRaw[]>(
-    () => weightLogs.map((l) => ({ id: l.id, date: localDate(l.loggedAt), weightLbs: l.weightKg * 2.20462 })),
-    [weightLogs]
+    () => weightLogs.map((l) => ({ id: l.id, date: localDate(l.loggedAt), weightLbs: kgToDisplay(l.weightKg) })),
+    [weightLogs, kgToDisplay]
   );
 
   const weightBuckets = useMemo(() => aggregateWeightByRange(weightRaw, range), [weightRaw, range]);
 
-  const latestWeightLbs = weightRaw.length > 0
-    ? weightRaw.reduce((latest, w) => (w.date > latest.date ? w : latest), weightRaw[0]).weightLbs
+  // Canonical latest weight in kg (WeightLogger formats it per the unit preference).
+  const latestWeightKg = weightLogs.length > 0
+    ? weightLogs.reduce((latest, w) => (w.loggedAt > latest.loggedAt ? w : latest), weightLogs[0]).weightKg
     : null;
 
   if (authLoading) {
@@ -220,35 +224,13 @@ export default function TodayScreen() {
               </>
             )}
 
-            {isToday && (
-              <>
-                <View style={{ height: 12 }} />
-                <DailyTasksChecklist />
-                <View style={{ height: 12 }} />
-                <WeightLogger latestLbs={latestWeightLbs} onLogged={load} />
-              </>
-            )}
-
-            <View style={{ height: 12 }} />
-            <RangeSelector value={range} onChange={setRange} />
-            <View style={styles.chartCard}>
-              <Text style={styles.sectionTitle}>Calories</Text>
-              <WeeklyChart data={weeklyMacros} target={targets?.targetCalories} />
-            </View>
-
-            <View style={{ height: 12 }} />
-            <View style={styles.chartCard}>
-              <Text style={styles.sectionTitle}>Weight</Text>
-              <WeightChart data={weightBuckets} onChanged={load} />
-            </View>
-
-            <View style={{ height: 20 }} />
+            <View style={{ height: 16 }} />
             <Text style={styles.sectionTitle}>
               {dateLabel(selectedDate)} · {logsForSelectedDate.length} meal{logsForSelectedDate.length !== 1 ? "s" : ""}
             </Text>
             {logsForSelectedDate.length === 0 ? (
               <Text style={styles.emptyText}>
-                {isToday ? "Nothing logged yet — snap a photo to get started." : "No meals logged this day."}
+                {isToday ? "Nothing logged yet — tap ＋ Log food or scan to get started." : "No meals logged this day."}
               </Text>
             ) : (
               <View style={styles.mealList}>
@@ -267,6 +249,28 @@ export default function TodayScreen() {
                 ))}
               </View>
             )}
+
+            {isToday && (
+              <>
+                <View style={{ height: 12 }} />
+                <DailyTasksChecklist />
+                <View style={{ height: 12 }} />
+                <WeightLogger latestKg={latestWeightKg} onLogged={load} />
+              </>
+            )}
+
+            <View style={{ height: 12 }} />
+            <RangeSelector value={range} onChange={setRange} />
+            <View style={styles.chartCard}>
+              <Text style={styles.sectionTitle}>Calories</Text>
+              <WeeklyChart data={weeklyMacros} target={targets?.targetCalories} />
+            </View>
+
+            <View style={{ height: 12 }} />
+            <View style={styles.chartCard}>
+              <Text style={styles.sectionTitle}>Weight</Text>
+              <WeightChart data={weightBuckets} onChanged={load} />
+            </View>
           </>
         )}
       </ScrollView>

@@ -25,6 +25,7 @@ import LogFoodMenu from "@/components/LogFoodMenu";
 import DailyTasksChecklist from "@/components/DailyTasksChecklist";
 import WeightLogger from "@/components/WeightLogger";
 import WaterTracker from "@/components/WaterTracker";
+import WorkoutLogger, { type WorkoutEntry } from "@/components/WorkoutLogger";
 import WeeklyChart from "@/components/WeeklyChart";
 import WeightChart from "@/components/WeightChart";
 import RangeSelector from "@/components/RangeSelector";
@@ -76,18 +77,21 @@ export default function TodayScreen() {
   const [range, setRange] = useState<RangeKey>("7D");
   const [selectedMeal, setSelectedMeal] = useState<MealLogEntry | null>(null);
   const [activeEnergy, setActiveEnergy] = useState(0);
+  const [workouts, setWorkouts] = useState<WorkoutEntry[]>([]);
 
   const load = useCallback(async () => {
     const historyDays = Math.max(daysForRange(range), 30);
     const weightDays = Math.max(daysForRange(range), 90);
-    const [profileRes, historyRes, weightRes] = await Promise.all([
+    const [profileRes, historyRes, weightRes, workoutRes] = await Promise.all([
       api<{ profile: DietProfile | null }>("/api/user/diet-profile"),
       api<{ logs: MealLogEntry[] }>(`/api/user/meal-log/history?days=${historyDays}`),
       api<{ logs: WeightLogEntry[] }>(`/api/user/weight-log?days=${weightDays}`),
+      api<{ workouts: WorkoutEntry[] }>("/api/user/workout-log"),
     ]);
     setTargets(profileRes.profile);
     setHistory(historyRes.logs ?? []);
     setWeightLogs(weightRes.logs ?? []);
+    setWorkouts(workoutRes.workouts ?? []);
 
     // Apple Health: add today's active calories to the budget (if connected).
     if (await isHealthConnected()) {
@@ -185,10 +189,12 @@ export default function TodayScreen() {
   const hasGoals = !!targets && targets.targetCalories > 0;
   const isToday = selectedDate === todayStr();
 
-  // On today, active calories from Apple Health are added to the calorie budget.
-  const showActivity = isToday && activeEnergy > 0 && hasGoals;
+  // On today, active calories (Apple Health) + logged workouts are added to the budget.
+  const workoutCalories = workouts.reduce((s, w) => s + (w.caloriesBurned ?? 0), 0);
+  const activityBonus = activeEnergy + workoutCalories;
+  const showActivity = isToday && activityBonus > 0 && hasGoals;
   const ringTargets = showActivity && targets
-    ? { ...targets, targetCalories: targets.targetCalories + activeEnergy }
+    ? { ...targets, targetCalories: targets.targetCalories + activityBonus }
     : targets;
 
   return (
@@ -236,7 +242,7 @@ export default function TodayScreen() {
                 </View>
                 <CombinedRings totals={totalsForSelectedDate} targets={ringTargets!} />
                 {showActivity && (
-                  <Text style={styles.activityNote}>🔥 +{activeEnergy} kcal from activity</Text>
+                  <Text style={styles.activityNote}>🔥 +{activityBonus} kcal from activity</Text>
                 )}
               </View>
             ) : (
@@ -295,6 +301,8 @@ export default function TodayScreen() {
               <>
                 <View style={{ height: 12 }} />
                 <DailyTasksChecklist />
+                <View style={{ height: 12 }} />
+                <WorkoutLogger workouts={workouts} onChanged={load} />
                 <View style={{ height: 12 }} />
                 <WaterTracker />
                 <View style={{ height: 12 }} />
